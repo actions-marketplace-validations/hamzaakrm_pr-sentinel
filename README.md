@@ -81,12 +81,13 @@ pr-sentinel review --diff-file examples/payments.diff --provider fake --no-stati
 
 Use `--fail-on high` to make the command exit with status 1 when there's a finding at that severity or above. That lets it act as a quality gate in CI or a pre-push hook.
 
-### GitHub Action
+### GitHub Action (Marketplace)
 
-1. Add `ANTHROPIC_API_KEY` (or `OPENAI_API_KEY`) under **Settings → Secrets → Actions**.
+1. Get a free Gemini API key at [aistudio.google.com](https://aistudio.google.com), then add it to your repo under **Settings → Secrets and variables → Actions** as `GEMINI_API_KEY`.
 2. Add `.github/workflows/pr-sentinel.yml`:
 
 ```yaml
+name: PR Sentinel review
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
@@ -102,13 +103,35 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
       - uses: hamzaakrm/pr-sentinel@v1
         with:
-          provider: anthropic
-          fail-on: critical
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
 ```
 
-The action posts one review per push. It contains a summary table plus inline comments, and fixes appear as GitHub **suggestion blocks** you can apply with one click.
+That's it. Every pull request now gets a summary table plus inline comments, and fixes appear as GitHub **suggestion blocks**.
+
+#### Action inputs
+
+| Input | Default | Description |
+|---|---|---|
+| `provider` | `gemini` | `gemini`, `anthropic`, `openai`, `ollama` or `fake` |
+| `model` | provider default | e.g. `gemini-2.5-pro`, `claude-sonnet-4-5`, `gpt-4.1-mini` |
+| `gemini-api-key` | | Needed for `provider: gemini` |
+| `anthropic-api-key` | | Needed for `provider: anthropic` |
+| `openai-api-key` | | Needed for `provider: openai` |
+| `min-severity` | `low` | Lowest severity to report |
+| `fail-on` | | Fail the check at or above this severity (e.g. `critical`) |
+| `github-token` | `${{ github.token }}` | Token used to post the review |
+
+Using Claude instead:
+
+```yaml
+      - uses: hamzaakrm/pr-sentinel@v1
+        with:
+          provider: anthropic
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          fail-on: critical
+```
+
+> **Privacy note:** the code diff is sent to the LLM provider you choose. Google's free Gemini tier may use submitted content to improve its products; use a paid tier, or `ollama` on a self-hosted runner, for private code.
 
 ## Configuration
 
